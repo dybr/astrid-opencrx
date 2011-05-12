@@ -43,8 +43,8 @@ public class OpencrxActivity {
         metadata.setValue(Metadata.KEY, OpencrxActivity.METADATA_KEY);
         metadata.setValue(ID, 0L);
         metadata.setValue(ACTIVITY_CREATOR_ID, OpencrxUtilities.INSTANCE.getDefaultCreator());
-        metadata.setValue(USERCREATOR_ID, Preferences.getLong(OpencrxUtilities.PREF_USER_ID, 0L));
-        metadata.setValue(ASSIGNED_TO_ID, Preferences.getLong(OpencrxUtilities.PREF_USER_ID, 0L));
+        metadata.setValue(USERCREATOR_ID, OpencrxUtilities.INSTANCE.getDefaultAssignedUser());
+        metadata.setValue(ASSIGNED_TO_ID, OpencrxUtilities.INSTANCE.getDefaultAssignedUser());
         metadata.setValue(CRX_ID, ""); //$NON-NLS-1$
         return metadata;
     }

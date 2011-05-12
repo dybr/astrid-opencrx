@@ -11,4 +11,28 @@
     <string name="opencrx_PPr_host_key">opencrx_host</string>    
     <string name="opencrx_PPr_segment_key">opencrx_segment</string>    
     <string name="opencrx_PPr_provider_key">opencrx_provider</string>    
+    
+    <string-array name="sync_SPr_interval_values">
+        <!-- sync_SPr_interval_values: interval in seconds for sync entries (do not edit) -->
+        <item>0</item>
+        <item>900</item>
+        <item>1800</item>
+        <item>3600</item>
+        <item>10800</item>
+        <item>21600</item>
+        <item>43200</item>
+        <item>86400</item>
+        <item>259200</item>
+        <item>604800</item>
+    </string-array>
+  
+      <!-- Preference Key (do not translate) -->
+    <string name="sync_SPr_status_key">sync_status</string>
+    <!-- Preference Key (do not translate) -->
+    <string name="sync_SPr_bgwifi_key">sync_bgwifi</string>
+    <!-- Preference Key (do not translate) -->
+    <string name="sync_SPr_sync_key">sync_sync</string>
+    <!-- Preference Key (do not translate) -->
+    <string name="sync_SPr_forget_key">sync_forget</string>
+    
 </resources>

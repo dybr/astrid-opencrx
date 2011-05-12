@@ -30,14 +30,12 @@ import android.content.Context;
 import android.content.Intent;
 import android.text.TextUtils;
 import android.text.format.Time;
+import android.util.Log;
 import android.util.TimeFormatException;
 
 import com.todoroo.andlib.data.Property;
 import com.todoroo.andlib.data.TodorooCursor;
-import com.todoroo.andlib.service.Autowired;
 import com.todoroo.andlib.service.ContextManager;
-import com.todoroo.andlib.service.DependencyInjectionService;
-import com.todoroo.andlib.service.ExceptionService;
 import com.todoroo.andlib.utility.AndroidUtilities;
 import com.todoroo.andlib.utility.DateUtilities;
 import com.todoroo.andlib.utility.DialogUtilities;
@@ -69,14 +67,9 @@ public class OpencrxSyncProvider extends SyncProvider<OpencrxTaskContainer> {
     private HashMap<String, String> labelMap;
     private Time lastSync;
     private OpencrxActivityProcessGraph graph;
-
-    @Autowired
-    protected ExceptionService exceptionService;
-
     
     public OpencrxSyncProvider() {
         super();
-        DependencyInjectionService.getInstance().inject(this);
     }
 
     // ----------------------------------------------------------------------
@@ -118,14 +111,14 @@ public class OpencrxSyncProvider extends SyncProvider<OpencrxTaskContainer> {
         String message = null;
 
         if(e instanceof IllegalStateException) {
-            exceptionService.reportError(tag + "-caught", e); //$NON-NLS-1$
+            Log.e(OpencrxUtils.TAG, e.getMessage());
 
             // occurs when network error
         } else if(!(e instanceof ApiServiceException) && e instanceof IOException) {
             message = context.getString(R.string.opencrx_ioerror);
         } else {
             message = context.getString(R.string.DLG_error, e.toString());
-            exceptionService.reportError(tag + "-unhandled", e); //$NON-NLS-1$
+            Log.e(OpencrxUtils.TAG, message);
         }
 
         if(context instanceof Activity) {
@@ -398,7 +391,7 @@ public class OpencrxSyncProvider extends SyncProvider<OpencrxTaskContainer> {
 
         userId = user.getLong("id_user");
 
-        Preferences.setLong(OpencrxUtilities.PREF_USER_ID, userId);
+        OpencrxUtilities.INSTANCE.setDefaultAssignedUser(userId);
 
     }
 
@@ -581,7 +574,8 @@ public class OpencrxSyncProvider extends SyncProvider<OpencrxTaskContainer> {
                 }else{
                     invoker.taskClose(idActivity, graph);
                     remote.task.setValue(Task.DELETION_DATE, local.task.getValue(Task.DELETION_DATE));
-                    return;
+                    // TODO: test this - bug fix
+                    // return;
                 }
             }catch(ApiServiceException ex){
                 local.task.setValue(Task.DELETION_DATE, 0L);
@@ -597,7 +591,8 @@ public class OpencrxSyncProvider extends SyncProvider<OpencrxTaskContainer> {
                 }else{
                     invoker.taskComplete(idActivity, graph);
                     remote.task.setValue(Task.COMPLETION_DATE, local.task.getValue(Task.COMPLETION_DATE));
-                    return;
+                    // TODO: test this - bug fix
+                    // return;
                 }
             }catch(ApiServiceException ex){
                 local.task.setValue(Task.COMPLETION_DATE, 0L);

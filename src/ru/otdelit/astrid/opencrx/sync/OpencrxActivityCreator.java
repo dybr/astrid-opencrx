@@ -32,8 +32,8 @@ public class OpencrxActivityCreator {
 
     // data class-part
     private final long id;
-
     private final String name;
+    
     private final String crxId;
 
     public OpencrxActivityCreator (StoreObject creatorData) {

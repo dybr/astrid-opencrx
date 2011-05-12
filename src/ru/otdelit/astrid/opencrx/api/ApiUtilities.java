@@ -69,7 +69,7 @@ public final class ApiUtilities {
      * @return
      */
     public static String decode(String string) {
-        return AndroidUtilities.unescapeHTML(string);
+        return StringEscapeUtils.unescapeHtml(string);
     }
 
 }

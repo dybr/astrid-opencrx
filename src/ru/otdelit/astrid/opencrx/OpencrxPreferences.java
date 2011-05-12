@@ -91,6 +91,8 @@ public class OpencrxPreferences extends SyncProviderPreferences {
                 preference.setSummary(r.getString(
                         R.string.opencrx_PPr_defaultcreator_summary,
                         ((ListPreference)preference).getEntries()[index]));
+            
+            OpencrxUtilities.INSTANCE.setDefaultCreatorInSharedPreferences(value);
         }
     }
 }
