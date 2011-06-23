@@ -45,6 +45,7 @@ import com.todoroo.astrid.data.Metadata;
 import com.todoroo.astrid.data.Task;
 import com.todoroo.astrid.sync.SyncContainer;
 import com.todoroo.astrid.sync.SyncProvider;
+import com.todoroo.astrid.sync.SyncProviderUtilities;
 
 /**
  * Adapted from Producteev plugin by Tim Su <tim@todoroo.com>
@@ -543,7 +544,7 @@ public class OpencrxSyncProvider extends SyncProvider<OpencrxTaskContainer> {
      * have changed.
      */
     @Override
-    protected void push(OpencrxTaskContainer local, OpencrxTaskContainer remote) throws IOException {
+    protected OpencrxTaskContainer push(OpencrxTaskContainer local, OpencrxTaskContainer remote) throws IOException {
 
         long idTask = local.pdvTask.getValue(OpencrxActivity.ID);
 
@@ -551,7 +552,7 @@ public class OpencrxSyncProvider extends SyncProvider<OpencrxTaskContainer> {
 
         // if local is marked do not sync, handle accordingly
         if(idDashboard == OpencrxUtilities.CREATOR_NO_SYNC) {
-            return;
+            return local;
         }
 
         String idActivity = local.pdvTask.containsNonNullValue(OpencrxActivity.CRX_ID) ? local.pdvTask.getValue(OpencrxActivity.CRX_ID)
@@ -574,8 +575,6 @@ public class OpencrxSyncProvider extends SyncProvider<OpencrxTaskContainer> {
                 }else{
                     invoker.taskClose(idActivity, graph);
                     remote.task.setValue(Task.DELETION_DATE, local.task.getValue(Task.DELETION_DATE));
-                    // TODO: test this - bug fix
-                    // return;
                 }
             }catch(ApiServiceException ex){
                 local.task.setValue(Task.DELETION_DATE, 0L);
@@ -591,8 +590,6 @@ public class OpencrxSyncProvider extends SyncProvider<OpencrxTaskContainer> {
                 }else{
                     invoker.taskComplete(idActivity, graph);
                     remote.task.setValue(Task.COMPLETION_DATE, local.task.getValue(Task.COMPLETION_DATE));
-                    // TODO: test this - bug fix
-                    // return;
                 }
             }catch(ApiServiceException ex){
                 local.task.setValue(Task.COMPLETION_DATE, 0L);
@@ -609,7 +606,7 @@ public class OpencrxSyncProvider extends SyncProvider<OpencrxTaskContainer> {
         }
 
         if (remote == null || TextUtils.isEmpty(idActivity))
-            return;
+            return local;
 
         // responsible
         if(idResponsible != remote.pdvTask.getValue(OpencrxActivity.ASSIGNED_TO_ID) )
@@ -663,6 +660,10 @@ public class OpencrxSyncProvider extends SyncProvider<OpencrxTaskContainer> {
 
             local.task.setValue(Task.NOTES, "");
         }
+        
+        remote = pull(local);
+        
+        return remote;
 
     }
 
@@ -889,5 +890,10 @@ public class OpencrxSyncProvider extends SyncProvider<OpencrxTaskContainer> {
 
         return false;
     }
+
+	@Override
+	protected SyncProviderUtilities getUtilities() {
+		return OpencrxUtilities.INSTANCE;
+	}
 
 }
