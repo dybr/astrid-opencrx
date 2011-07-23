@@ -106,6 +106,7 @@ public class OpencrxSyncProvider extends SyncProvider<OpencrxTaskContainer> {
      */
     @Override
     protected void handleException(String tag, Exception e, boolean displayError) {
+    	e.printStackTrace();
         final Context context = ContextManager.getContext();
         preferences.setLastError(e.toString());
 
@@ -118,7 +119,7 @@ public class OpencrxSyncProvider extends SyncProvider<OpencrxTaskContainer> {
         } else if(!(e instanceof ApiServiceException) && e instanceof IOException) {
             message = context.getString(R.string.opencrx_ioerror);
         } else {
-            message = context.getString(R.string.DLG_error, e.toString());
+            message = context.getString(R.string.DLG_error, e.getMessage());
             Log.e(OpencrxUtils.TAG, message);
         }
 

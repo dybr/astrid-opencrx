@@ -1,9 +1,9 @@
 package ru.otdelit.astrid.opencrx;
 
+import ru.otdelit.astrid.opencrx.api.OpencrxUtils;
 import android.content.Context;
 import android.content.SharedPreferences;
 import android.content.SharedPreferences.Editor;
-import android.content.pm.PackageManager.NameNotFoundException;
 import android.util.Log;
 
 import com.todoroo.andlib.service.ContextManager;
@@ -57,17 +57,27 @@ public class OpencrxUtilities extends SyncProviderUtilities {
 
     
     protected static SharedPreferences getPrefs() {
-        return ContextManager.getContext().
-        					getSharedPreferences("crx-prefs", Context.MODE_WORLD_READABLE + Context.MODE_WORLD_WRITEABLE);
+    	SharedPreferences sp = ContextManager.getContext().
+				getSharedPreferences("crx-prefs", Context.MODE_WORLD_READABLE + Context.MODE_WORLD_WRITEABLE);
+    	Log.i(OpencrxUtils.TAG, "Shared preferences: " + sp);
+        return sp;
     }
 
     /** authentication token, or null if doesn't exist */
+    @Override
     public String getToken() {
-        return getPrefs().getString(getIdentifier() + PREF_TOKEN, null);
+    	String defToken = Preferences.getStringValue(getIdentifier() + PREF_TOKEN);
+    	String token = getPrefs().getString(getIdentifier() + PREF_TOKEN, null);
+    	Log.i(OpencrxUtils.TAG, "Token: " + token);
+    	Log.i(OpencrxUtils.TAG, "DefToken: " + defToken);
+        return token == null ? defToken : token;
     }
 
     /** Sets the authentication token. Set to null to clear. */
+    @Override
     public void setToken(String setting) {
+    	Preferences.setString(getIdentifier() + PREF_TOKEN, setting);
+    	
         Editor editor = getPrefs().edit();
         editor.putString(getIdentifier() + PREF_TOKEN, setting);
         editor.commit();
@@ -76,8 +86,9 @@ public class OpencrxUtilities extends SyncProviderUtilities {
     /**
      * @return true if we have a token for this user, false otherwise
      */
+    @Override
     public boolean isLoggedIn() {
-        return getPrefs().getString(getIdentifier() + PREF_TOKEN, null) != null;
+        return getToken() != null;
     }
     
     /**
