@@ -217,7 +217,14 @@ public class OpencrxUtils {
     		return getPropertySetAddress(xml);
     	}catch (Exception ex){
     		throw new ApiServiceException(ex);
-    	}
+    	}finally{
+            try {
+            	if (xml!=null)
+            		xml.close();
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        }
     }
 
     public String getPropertySet(String url) throws ApiServiceException{
@@ -228,7 +235,14 @@ public class OpencrxUtils {
     		return getPropertySetAddress(xml);
     	}catch (Exception ex){
     		throw new ApiServiceException(ex);
-    	}
+    	}finally{
+            try {
+            	if (xml!=null)
+            		xml.close();
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        }
     }
     
     public String getReferencePropertyValueXri(String url) throws ApiServiceException {
@@ -378,6 +392,13 @@ public class OpencrxUtils {
             return temp.length() == 0 ? null : temp.getJSONObject(0);
         } catch (JSONException e) {
             throw new ApiServiceException(e);
+        }finally{
+            try {
+            	if (xml!=null)
+            		xml.close();
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
         }
     }
 
@@ -391,6 +412,13 @@ public class OpencrxUtils {
 
         } catch (Exception e) {
             throw new ApiServiceException(e);
+        }finally{
+            try {
+            	if (xml!=null)
+            		xml.close();
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
         }
     }
     
@@ -403,7 +431,14 @@ public class OpencrxUtils {
 
         } catch (Exception e) {
             throw new ApiServiceException(e);
-        }    	
+        }finally{
+            try {
+            	if (xml!=null)
+            		xml.close();
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        }
     }
     
     public JSONObject getOpencrxActivity(String url, OpencrxActivityProcessGraph graph) throws ApiServiceException{
@@ -414,6 +449,13 @@ public class OpencrxUtils {
             return this.convertOpencrxActivityToJson(xml, graph);
         } catch (Exception e) {
             throw new ApiServiceException(e);
+        }finally{
+            try {
+            	if (xml!=null)
+            		xml.close();
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
         }
     	
     }

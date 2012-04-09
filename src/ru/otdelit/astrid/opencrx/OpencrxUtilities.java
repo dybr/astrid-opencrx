@@ -111,9 +111,8 @@ public class OpencrxUtilities extends SyncProviderUtilities {
     public void setDefaultCreatorInSharedPreferences(Object defaultCreator){    	
         String defaultCreatorId = String.valueOf(CREATOR_NO_SYNC);
         
-        if (defaultCreator != null){
+        if (defaultCreator != null)
         	defaultCreatorId = defaultCreator.toString();
-        }
         
     	Editor edit = getPrefs().edit();
     	edit.putString("opencrx_defaultcreator", defaultCreatorId);
@@ -143,5 +142,10 @@ public class OpencrxUtilities extends SyncProviderUtilities {
     private OpencrxUtilities() {
         // prevent instantiation
     }
+
+	@Override
+	public String getLoggedInUserName() {
+		return Preferences.getStringValue(R.string.opencrx_PPr_login);
+	}
 
 }

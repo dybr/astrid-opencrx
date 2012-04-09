@@ -3,6 +3,7 @@
     xmlns:android="http://schemas.android.com/apk/res/android">  
        
     <PreferenceCategory
+        android:key="@string/sync_SPr_group_status"
         android:title="@string/sync_SPr_group_status">
     
         <Preference 
@@ -14,6 +15,7 @@
     </PreferenceCategory>
             
     <PreferenceCategory
+        android:key="@string/sync_SPr_key_options"
         android:title="@string/sync_SPr_group_options">
     
         <ListPreference  
