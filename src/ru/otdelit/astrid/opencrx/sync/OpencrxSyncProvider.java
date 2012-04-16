@@ -205,6 +205,8 @@ public class OpencrxSyncProvider extends SyncProvider<OpencrxTaskContainer> {
 
         preferences.recordSyncStart();
 
+        Log.i(OpencrxUtils.TAG, "Starting sync!");
+
         try {
             // load user information
             JSONObject user = invoker.userUpdateOpencrx();
@@ -230,28 +232,23 @@ public class OpencrxSyncProvider extends SyncProvider<OpencrxTaskContainer> {
             String lastActivityId = Preferences.getStringValue(OpencrxUtilities.PREF_SERVER_LAST_ACTIVITY);
 
             // read dashboards
-            JSONArray creators = invoker.dashboardsShowListOpencrx();
-            dataService.updateCreators(creators);
+            updateCreators();
 
             // read contacts
-            OpencrxContact[] contacts = invoker.usersShowListOpencrx();
-            dataService.updateContacts( contacts );
+            updateContacts();
+
+            // read labels
+            updateResources(userCrxId);
 
             // read activity process graph
             graph = invoker.getActivityProcessGraph();
 
-            // read labels and tasks
             ArrayList<OpencrxTaskContainer> remoteTasks = new ArrayList<OpencrxTaskContainer>();
-
-            JSONArray labels = invoker.resourcesShowList();
-            readLabels(labels, userCrxId);
-
             JSONArray tasks = invoker.tasksShowListOpencrx(graph);
 
             for(int i = 0; i < tasks.length(); i++) {
 
                 JSONObject task = tasks.getJSONObject(i);
-
                 OpencrxTaskContainer remote = parseRemoteTask(task);
 
                 // update reminder flags for incoming remote tasks to prevent annoying
@@ -264,7 +261,16 @@ public class OpencrxSyncProvider extends SyncProvider<OpencrxTaskContainer> {
 
             }
 
+            // TODO: delete
+            Log.i(OpencrxUtils.TAG, "Matching local to remote...");
+
             matchLocalTasksToRemote(remoteTasks);
+
+            // TODO: delete
+            Log.i(OpencrxUtils.TAG, "Matching local to remote finished");
+
+            // TODO: delete
+            Log.i(OpencrxUtils.TAG, "Synchronizing tasks...");
 
             SyncData<OpencrxTaskContainer> syncData = populateSyncData(remoteTasks);
             try {
@@ -273,6 +279,9 @@ public class OpencrxSyncProvider extends SyncProvider<OpencrxTaskContainer> {
                 syncData.localCreated.close();
                 syncData.localUpdated.close();
             }
+
+            // TODO: delete
+            Log.i(OpencrxUtils.TAG, "Synchronizing tasks finished");
 
             cur.setToNow();
             Preferences.setString(OpencrxUtilities.PREF_SERVER_LAST_SYNC, cur.format2445());
@@ -288,12 +297,36 @@ public class OpencrxSyncProvider extends SyncProvider<OpencrxTaskContainer> {
 
             labelMap = null;
             lastSync = null;
+        
+            // TODO: delete
+            Log.i(OpencrxUtils.TAG, "Sync successfull");
+
         } catch (IllegalStateException e) {
         	// occurs when application was closed
         } catch (Exception e) {
             handleException("opencrx-sync", e, true); //$NON-NLS-1$
         }
     }
+
+	private void updateResources(String userCrxId) throws ApiServiceException,
+			IOException, JSONException {
+		JSONArray labels = invoker.resourcesShowList();
+		readLabels(labels, userCrxId);
+		Log.i(OpencrxUtils.TAG, "Resources was read.");
+	}
+
+	private void updateContacts() throws ApiServiceException, IOException {
+		OpencrxContact[] contacts = invoker.usersShowListOpencrx();
+		dataService.updateContacts( contacts );
+		Log.i(OpencrxUtils.TAG, "Contacts was read.");
+	}
+
+	private void updateCreators() throws ApiServiceException, IOException,
+			JSONException {
+		JSONArray creators = invoker.dashboardsShowListOpencrx();
+		dataService.updateCreators(creators);
+        Log.i(OpencrxUtils.TAG, "Creators was read.");
+	}
 
     private void matchLocalTasksToRemote(
             ArrayList<OpencrxTaskContainer> remoteTasks) throws IOException,

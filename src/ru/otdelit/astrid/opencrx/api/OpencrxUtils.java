@@ -959,6 +959,7 @@ public class OpencrxUtils {
         if (xmlParser == null){
             xmlParser = factory.newSAXParser();
         }
+        xmlParser.reset();
         return xmlParser;
     }
 

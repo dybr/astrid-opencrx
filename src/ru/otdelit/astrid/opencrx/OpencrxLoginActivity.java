@@ -21,11 +21,13 @@ package ru.otdelit.astrid.opencrx;
 
 import ru.otdelit.astrid.opencrx.api.ApiAuthenticationException;
 import ru.otdelit.astrid.opencrx.api.OpencrxInvoker;
+import ru.otdelit.astrid.opencrx.api.OpencrxUtils;
 import android.app.Activity;
 import android.app.ProgressDialog;
 import android.content.Intent;
 import android.os.Bundle;
 import android.text.Editable;
+import android.util.Log;
 import android.view.View;
 import android.view.View.OnClickListener;
 import android.widget.Button;
@@ -111,8 +113,10 @@ public class OpencrxLoginActivity extends Activity {
                     synchronize();
                 } catch (ApiAuthenticationException e) {
                     errorMessage.append(getString(R.string.opencrx_PLA_errorAuth));
+                    Log.e(OpencrxUtils.TAG, e.toString());
                 } catch (Exception e) {
                     errorMessage.append(e.getMessage());
+                    Log.e(OpencrxUtils.TAG, e.toString());
                 } finally {
                     runOnUiThread(new Runnable() {
                         public void run() {

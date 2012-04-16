@@ -12,9 +12,11 @@ import org.apache.http.client.methods.HttpDelete;
 import org.apache.http.client.methods.HttpGet;
 import org.apache.http.client.methods.HttpPost;
 import org.apache.http.client.methods.HttpPut;
+import org.apache.http.conn.ClientConnectionManager;
 import org.apache.http.entity.StringEntity;
 import org.apache.http.impl.client.AbstractHttpClient;
 import org.apache.http.impl.client.DefaultHttpClient;
+import org.apache.http.impl.conn.tsccm.ThreadSafeClientConnManager;
 import org.apache.http.params.BasicHttpParams;
 import org.apache.http.params.HttpConnectionParams;
 import org.apache.http.params.HttpParams;
@@ -36,25 +38,20 @@ public class OpencrxRestClient{
     private static final int HTTP_OK = 200;
 
     private static final int TIMEOUT_MILLIS = 30000;
-
-    private static HttpClient httpClient = null;
-
-     private synchronized static void initializeHttpClient() {
-        if (httpClient == null) {
-            HttpParams params = new BasicHttpParams();
-            HttpConnectionParams.setConnectionTimeout(params, TIMEOUT_MILLIS);
-            HttpConnectionParams.setSoTimeout(params, TIMEOUT_MILLIS);
-            httpClient = new DefaultHttpClient(params);
-        }
-    }
-
-    private synchronized static void addCredentials(String login, String password){
-        if (httpClient == null)
-            return;
-
-        ((AbstractHttpClient) httpClient).getCredentialsProvider().setCredentials(AuthScope.ANY,
+    
+    public DefaultHttpClient getThreadSafeClient(String login, String password) {
+        DefaultHttpClient client = new DefaultHttpClient();
+        ClientConnectionManager mgr = client.getConnectionManager();
+        HttpParams params = client.getParams();
+        HttpConnectionParams.setConnectionTimeout(params, TIMEOUT_MILLIS);
+        HttpConnectionParams.setSoTimeout(params, TIMEOUT_MILLIS);
+     
+        client = new DefaultHttpClient(new ThreadSafeClientConnManager(params, 
+                mgr.getSchemeRegistry()), params);
+        client.getCredentialsProvider().setCredentials(AuthScope.ANY,
                 new UsernamePasswordCredentials(login, password));
-
+     
+        return client;
     }
 
     /**
@@ -83,6 +80,8 @@ public class OpencrxRestClient{
             else
                 error = new ApiServiceException(response.getStatusLine().toString());
 
+            // important to consume content even if there was an error!
+            entity.consumeContent();
             throw error;
         }
 
@@ -102,13 +101,10 @@ public class OpencrxRestClient{
      * @throws IOException
      */
     public synchronized InputStream get(String url, String opencrxLogin, String opencrxPassword) throws IOException {
-        initializeHttpClient();
-
-        addCredentials(opencrxLogin, opencrxPassword);
 
         try {
             HttpGet httpGet = new HttpGet(url);
-            HttpResponse response = httpClient.execute(httpGet);
+            HttpResponse response = getThreadSafeClient(opencrxLogin, opencrxPassword).execute(httpGet);
 
             return processHttpResponse(response);
         } catch (IOException e) {
@@ -122,15 +118,11 @@ public class OpencrxRestClient{
 
     @SuppressWarnings("nls")
     public synchronized InputStream post(String url, String data, String login, String password) throws IOException {
-        initializeHttpClient();
-
-        addCredentials(login, password);
-
         try {
             HttpPost httpPost = new HttpPost(url);
             httpPost.addHeader("Content-Type", "application/xml;charset=UTF-8");
             httpPost.setEntity(new StringEntity(data, "UTF-8"));
-            HttpResponse response = httpClient.execute(httpPost);
+            HttpResponse response = getThreadSafeClient(login, password).execute(httpPost);
 
             return processHttpResponse(response);
         } catch (IOException e) {
@@ -144,13 +136,9 @@ public class OpencrxRestClient{
 
 
     public synchronized InputStream delete(String url , String login, String password) throws IOException{
-        initializeHttpClient();
-
-        addCredentials(login, password);
-
         try{
             HttpDelete httpDelete = new HttpDelete(url);
-            HttpResponse resp = httpClient.execute(httpDelete);
+            HttpResponse resp = getThreadSafeClient(login, password).execute(httpDelete);
 
             return processHttpResponse(resp);
         } catch (IOException e) {
@@ -164,15 +152,11 @@ public class OpencrxRestClient{
 
     @SuppressWarnings("nls")
     public synchronized InputStream put(String url, String data, String login, String password) throws IOException {
-        initializeHttpClient();
-
-        addCredentials(login, password);
-
         try {
             HttpPut httpPut = new HttpPut(url);
             httpPut.addHeader("Content-Type", "application/xml;charset=UTF-8");
             httpPut.setEntity(new StringEntity(data, "UTF-8"));
-            HttpResponse response = httpClient.execute(httpPut);
+            HttpResponse response = getThreadSafeClient(login, password).execute(httpPut);
 
             return processHttpResponse(response);
         } catch (IOException e) {
@@ -182,14 +166,6 @@ public class OpencrxRestClient{
             ioException.initCause(e);
             throw ioException;
         }
-    }
-
-
-    /**
-     * Destroy and re-create http client
-     */
-    public void reset() {
-        httpClient = null;
     }
 
 }
