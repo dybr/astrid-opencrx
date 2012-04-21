@@ -518,6 +518,7 @@ public class OpencrxSyncProvider extends SyncProvider<OpencrxTaskContainer> {
             remoteTask = remoteTask.getJSONObject("task");
 
         task.setValue(Task.TITLE, ApiUtilities.decode(remoteTask.getString("title")));
+        task.setValue(Task.NOTES, remoteTask.getString("detailedDescription") );
         task.setValue(Task.CREATION_DATE, ApiUtilities.producteevToUnixTime(remoteTask.getString("time_created"), 0));
         task.setValue(Task.COMPLETION_DATE, remoteTask.getInt("status") == 1 ? DateUtilities.now() : 0);
         task.setValue(Task.DELETION_DATE, remoteTask.getInt("deleted") == 1 ? DateUtilities.now() : 0);
@@ -642,10 +643,6 @@ public class OpencrxSyncProvider extends SyncProvider<OpencrxTaskContainer> {
         if (remote == null || TextUtils.isEmpty(idActivity))
             return local;
 
-        // responsible
-        if(idResponsible != remote.pdvTask.getValue(OpencrxActivity.ASSIGNED_TO_ID) )
-            invoker.taskSetAssignedTo(idActivity, idContact);
-
         // core properties
         if(shouldTransmit(local, Task.TITLE, remote))
             invoker.taskSetName(idActivity, local.task.getValue(Task.TITLE));
@@ -687,6 +684,10 @@ public class OpencrxSyncProvider extends SyncProvider<OpencrxTaskContainer> {
         }
 
         // notes
+        if(shouldTransmit(local, Task.NOTES, remote))
+        	invoker.taskSetDetailedDescription(idActivity, local.task.getValue(Task.NOTES));
+        
+        /*
         if( ! TextUtils.isEmpty(local.task.getValue(Task.NOTES)) ) {
             String note = local.task.getValue(Task.NOTES);
 
@@ -694,7 +695,10 @@ public class OpencrxSyncProvider extends SyncProvider<OpencrxTaskContainer> {
 
             local.task.setValue(Task.NOTES, "");
         }
-        
+        */
+        // responsible
+        invoker.taskSetAssignedTo(idActivity, idContact);
+
         remote = pull(local);
         
         return remote;

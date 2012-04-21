@@ -70,6 +70,7 @@ public class OpencrxInvoker {
     private final static String ACTIVITY_PROPERTY_ASSIGNED_TO = "assignedTo";
     private final static String ACTIVITY_PROPERTY_REPORTING_ACCOUNT = "reportingAccount";
     private final static String ACTIVITY_PROPERTY_NAME = "name";
+	private static final String ACTIVITY_PROPERTY_DETAILED_DESCRIPTION = "detailedDescription";
     private final static String ACTIVITY_PROPERTY_DUE_BY = "dueBy";
     private final static String ACTIVITY_PROPERTY_PRIORITY = "priority";
     private final static String ACTIVITY_PROPERTY_ASSIGNED_RESOURCE = "assignedResource";
@@ -322,7 +323,18 @@ public class OpencrxInvoker {
         utils.executePut(url, modifyData);
 
     }
+    
+    public void taskSetDetailedDescription(String idActivity, String description)  throws IOException, ApiServiceException {
+        String url = createFetchUrl(TextUtils.concat(opencrxUrl, XRI_ACTIVITY, "/", idActivity).toString());
 
+        String modifyData = OpencrxUtils.createActiviftyModificationParams(ACTIVITY_PROPERTY_DETAILED_DESCRIPTION,
+        																	description);
+
+        // put modification params, as a result retrieve activity xml
+        utils.executePut(url, modifyData);
+
+    }
+    
     public void taskSetPriority(String idActivity, Integer priority)  throws IOException, ApiServiceException {
         String url = createFetchUrl(TextUtils.concat(opencrxUrl, XRI_ACTIVITY, "/", idActivity).toString());
 

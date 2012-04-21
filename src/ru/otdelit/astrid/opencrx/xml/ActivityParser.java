@@ -26,7 +26,7 @@ import android.text.TextUtils;
 public class ActivityParser extends BaseParser {
 
     private final static List<String> tags = Arrays.asList("name", "createdAt", "dueBy", "priority", "lastAppliedCreator", "assignedTo",
-            "processState", "modifiedAt");
+            "processState", "modifiedAt", "detailedDescription");
 
     private final JSONArray destination;
     private final String closedStateId;
@@ -52,6 +52,10 @@ public class ActivityParser extends BaseParser {
         try {
             if (qName.equals("name")){
                  task.put("title", buffer.toString());
+            }
+
+            if (qName.equals("detailedDescription")){
+                task.put("detailedDescription", buffer.toString());
             }
 
             if (qName.equals("processState")){
@@ -148,6 +152,7 @@ public class ActivityParser extends BaseParser {
                 task.put("labels", new JSONArray());
 
                 task.put("title", "");
+                task.put("detailedDescription", "");
                 task.put("time_created", "");
                 task.put("deadline", "");
                 task.put("star", "0");
