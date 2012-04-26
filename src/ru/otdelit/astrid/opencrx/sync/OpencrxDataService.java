@@ -14,6 +14,7 @@ import ru.otdelit.astrid.opencrx.api.ApiUtilities;
 
 import android.content.Context;
 import android.text.TextUtils;
+import android.text.format.Time;
 
 import com.todoroo.andlib.data.Property;
 import com.todoroo.andlib.data.TodorooCursor;
@@ -29,6 +30,8 @@ import com.todoroo.astrid.data.StoreObject;
 import com.todoroo.astrid.data.StoreObjectApiDao;
 import com.todoroo.astrid.data.StoreObjectApiDao.StoreObjectCriteria;
 import com.todoroo.astrid.data.Task;
+import com.todoroo.astrid.data.Update;
+import com.todoroo.astrid.data.UpdateApiDao;
 import com.todoroo.astrid.sync.SyncMetadataService;
 import com.todoroo.astrid.sync.SyncProviderUtilities;
 
@@ -47,6 +50,11 @@ public final class OpencrxDataService extends SyncMetadataService<OpencrxTaskCon
     
     /** Utility for joining tasks with metadata */
     public static final Join METADATA_JOIN = Join.left(Metadata.TABLE, Task.ID.eq(Metadata.TASK));
+    
+    /**
+     * ATTENTION: duplicates UpdateAdapter.UPDATE_TASK_COMMENT
+     */
+    public static final String UPDATE_TASK_COMMENT = "task_comment"; //$NON-NLS-1$
 
     // --- singleton
 
@@ -63,12 +71,14 @@ public final class OpencrxDataService extends SyncMetadataService<OpencrxTaskCon
     protected final Context context;
 
     private StoreObjectApiDao storeObjectDao;
+    private UpdateApiDao updateDao;
 
     private OpencrxDataService(Context context) {
     	super(context);
         this.context = context;
         
         storeObjectDao = new StoreObjectApiDao(context);
+        updateDao = new UpdateApiDao(context);
     }
 
     // --- task and metadata methods
@@ -123,6 +133,34 @@ public final class OpencrxDataService extends SyncMetadataService<OpencrxTaskCon
         }
 
         return ret;
+    }
+    
+    // --- Update methods
+    
+    public Update[] readNewComments(Time lastSync, long taskId){
+    	Update[] ret = null;
+    	TodorooCursor<Update> cursor = updateDao.query(Query.select(Update.PROPERTIES)
+    														.where(
+    															Criterion.and(
+    																	Update.ACTION_CODE.eq(UPDATE_TASK_COMMENT), 
+    																	Update.TASK_LOCAL.eq(taskId),
+    																	Update.CREATION_DATE.gt(lastSync.toMillis(false))
+    															)
+    														)
+    												);
+    	
+    	try{
+    		ret = new Update[cursor.getCount()];
+    		for (int i = 0; i < ret.length; ++i){
+    			cursor.moveToNext();
+    			Update upd = new Update(cursor);
+    			ret[i] = upd;
+    		}
+    	}finally{
+    		cursor.close();
+    	}
+    	
+    	return ret;
     }
 
     // --- dashboard methods

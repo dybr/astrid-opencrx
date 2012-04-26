@@ -43,6 +43,7 @@ import com.todoroo.andlib.utility.Preferences;
 import com.todoroo.astrid.api.AstridApiConstants;
 import com.todoroo.astrid.data.Metadata;
 import com.todoroo.astrid.data.Task;
+import com.todoroo.astrid.data.Update;
 import com.todoroo.astrid.sync.SyncContainer;
 import com.todoroo.astrid.sync.SyncProvider;
 import com.todoroo.astrid.sync.SyncProviderUtilities;
@@ -581,7 +582,7 @@ public class OpencrxSyncProvider extends SyncProvider<OpencrxTaskContainer> {
     @Override
     protected OpencrxTaskContainer push(OpencrxTaskContainer local, OpencrxTaskContainer remote) throws IOException {
 
-        long idTask = local.pdvTask.getValue(OpencrxActivity.ID);
+    	long idTask = local.pdvTask.getValue(OpencrxActivity.ID);
 
         long idDashboard = local.pdvTask.getValue(OpencrxActivity.ACTIVITY_CREATOR_ID);
 
@@ -687,15 +688,15 @@ public class OpencrxSyncProvider extends SyncProvider<OpencrxTaskContainer> {
         if(shouldTransmit(local, Task.NOTES, remote))
         	invoker.taskSetDetailedDescription(idActivity, local.task.getValue(Task.NOTES));
         
-        /*
-        if( ! TextUtils.isEmpty(local.task.getValue(Task.NOTES)) ) {
-            String note = local.task.getValue(Task.NOTES);
+        Update[] newComments = dataService.readNewComments(lastSync, local.task.getId());
+        for (Update comment : newComments){
+            invoker.taskFollowUpToInProgress(idActivity, graph);
+            
+        	String text = comment.getValue(Update.MESSAGE);
 
-            invoker.taskAddNote(idActivity, note, graph);
-
-            local.task.setValue(Task.NOTES, "");
+            invoker.taskAddNote(idActivity, text, graph);
         }
-        */
+        
         // responsible
         invoker.taskSetAssignedTo(idActivity, idContact);
 
