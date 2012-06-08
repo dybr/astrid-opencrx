@@ -341,7 +341,7 @@ public class OpencrxSyncProvider extends SyncProvider<OpencrxTaskContainer> {
                 locals.moveToNext();
                 OpencrxTaskContainer local = read(locals);
 
-                if (! local.pdvTask.containsNonNullValue(OpencrxActivity.CRX_ID))
+                if (! local.pdvTask.containsNonNullValue(OpencrxActivity.CRX_ID) )
                     continue;
 
                 String idActivity = local.pdvTask.getValue(OpencrxActivity.CRX_ID);
@@ -401,6 +401,16 @@ public class OpencrxSyncProvider extends SyncProvider<OpencrxTaskContainer> {
                         // no such task on remote server - delete local
                         dataService.deleteTaskAndMetadata(local.task.getId());
                     }
+                } else {
+                	// sync comments
+                    Update[] newComments = dataService.readNewComments(lastSync, local.task.getId());
+                    for (Update comment : newComments){
+                        invoker.taskFollowUpToInProgress(idActivity, graph);
+                        
+                    	String text = comment.getValue(Update.MESSAGE);
+
+                        invoker.taskAddNote(idActivity, text, graph);
+                    }                    
                 }
             }
         }finally{
@@ -687,15 +697,6 @@ public class OpencrxSyncProvider extends SyncProvider<OpencrxTaskContainer> {
         // notes
         if(shouldTransmit(local, Task.NOTES, remote))
         	invoker.taskSetDetailedDescription(idActivity, local.task.getValue(Task.NOTES));
-        
-        Update[] newComments = dataService.readNewComments(lastSync, local.task.getId());
-        for (Update comment : newComments){
-            invoker.taskFollowUpToInProgress(idActivity, graph);
-            
-        	String text = comment.getValue(Update.MESSAGE);
-
-            invoker.taskAddNote(idActivity, text, graph);
-        }
         
         // responsible
         invoker.taskSetAssignedTo(idActivity, idContact);
