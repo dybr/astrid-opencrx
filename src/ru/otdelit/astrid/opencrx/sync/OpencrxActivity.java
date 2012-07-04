@@ -5,7 +5,6 @@ import ru.otdelit.astrid.opencrx.OpencrxUtilities;
 
 import com.todoroo.andlib.data.Property.LongProperty;
 import com.todoroo.andlib.data.Property.StringProperty;
-import com.todoroo.andlib.utility.Preferences;
 import com.todoroo.astrid.data.Metadata;
 
 /**

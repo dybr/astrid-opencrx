@@ -446,7 +446,8 @@ class Entities {
         /**
          * {@inheritDoc}
          */
-        public void add(String name, int value) {
+        @SuppressWarnings("unchecked")
+		public void add(String name, int value) {
             mapNameToValue.put(name, new Integer(value));
             mapValueToName.put(value, name);
         }
@@ -478,7 +479,8 @@ class Entities {
         /**
          * {@inheritDoc}
          */
-        public void add(String name, int value) {
+        @SuppressWarnings("unchecked")
+		public void add(String name, int value) {
             mapNameToValue.put(name, new Integer(value));
             mapValueToName.put(new Integer(value), name);
         }

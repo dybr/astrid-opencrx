@@ -54,12 +54,14 @@ public class OpencrxInvoker {
     private final static String CLASS_ACTIVITY_PROCESS = "org:opencrx:kernel:activity1:ActivityProcess";
     private final static String CLASS_ACTIVITY_PROCESS_TRANSITION = "org:opencrx:kernel:activity1:ActivityProcessTransition";
     private final static String CLASS_ACTIVITY_PROCESS_STATE = "org:opencrx:kernel:activity1:ActivityProcessState";
+    private final static String CLASS_ACTIVITY_FOLLOW_UP = "org:opencrx:kernel:activity1:ActivityFollowUp";
     private final static String CLASS_PROPERTY_SET = "org:opencrx:kernel:generic:PropertySet";
     private final static String CLASS_PROPERTY = "org:opencrx:kernel:base:Property";
 
     private final static String QUERY_NOT_DISABLED = "forAllDisabled().isFalse()";
     private final static String QUERY_NAME = "name().equalTo(\"\")";
     private final static String QUERY_ACTIVITY_STATE_NOT_CLOSED= "activityState().notEqualTo(:short:20)";
+    private final static String QUERY_CREATED_AFTER= "createdAt().greaterThan(:datetime:%s)";
 
     private final static String OPERATION_NEW_ACTIVITY = "newActivity";
     private final static String OPERATION_REAPPLY_ACTIVITY_CREATOR = "reapplyActivityCreator";
@@ -75,6 +77,7 @@ public class OpencrxInvoker {
     private final static String ACTIVITY_PROPERTY_PRIORITY = "priority";
     private final static String ACTIVITY_PROPERTY_ASSIGNED_RESOURCE = "assignedResource";
     private final static String ACTIVITY_PROPERTY_SCHEDULED_START = "scheduledStart";
+    private final static String ACTIVITY_PROPERTY_FOLLOW_UP = "followUp";
     private final static String ACTIVITY_PROCESS_PROPERTY_TRANSITIONS = "transition";
     private final static String ACTIVITY_PROCESS_PROPERTY_STATES = "state";
 
@@ -396,6 +399,29 @@ public class OpencrxInvoker {
         // fourth: at last we execute AddNote follow-up
         executeFollowUp(idActivity, processId, transAddNote.getId(), "Astrid Note", note);
     }
+    
+    public List<String> getAddNotes(String idActivity, OpencrxActivityProcessGraph graph, String lastSync) throws ApiServiceException{
+    	List<String> ret = new LinkedList<String>();
+    	
+        OpencrxActivityProcessTransition transAddNote = graph.getTransitionByName("Add Note");
+        int position = 0;
+
+        for (;;){
+            String url = createFetchUrl(TextUtils.concat(opencrxUrl, XRI_ACTIVITY, "/", idActivity, "/", ACTIVITY_PROPERTY_FOLLOW_UP).toString(),
+                    KEY_POSITION, position, KEY_SIZE, SIZE,
+                    KEY_QUERY_TYPE, CLASS_ACTIVITY_FOLLOW_UP,
+                    KEY_QUERY, String.format(QUERY_CREATED_AFTER, lastSync));
+
+            boolean hasMore = utils.getFollowUpsAddNote(ret, url, transAddNote.getId());
+
+            if (hasMore)
+                position += SIZE;
+            else
+                break;
+        }
+         
+    	return ret;
+    }
 
     public void taskFollowUpToInProgress(String idActivity, OpencrxActivityProcessGraph graph) throws IOException {
         Pair<String, String> processAndState = getActivityProcessAndState(idActivity);
@@ -430,6 +456,8 @@ public class OpencrxInvoker {
     public boolean taskOpen(String idActivity, OpencrxActivityProcessGraph graph) throws IOException{
         return this.executeFollowUpsToState(idActivity, "In Progress", graph);
     }
+    
+    
 
     public OpencrxActivityProcessGraph getActivityProcessGraph() throws IOException{
         String url = createFetchUrl(TextUtils.concat(opencrxUrl, XRI_ACTIVITY_PROCESS).toString(),

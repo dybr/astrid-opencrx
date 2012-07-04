@@ -7,6 +7,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.List;
 
 import org.json.JSONArray;
 import org.json.JSONException;
@@ -345,6 +346,8 @@ public class OpencrxSyncProvider extends SyncProvider<OpencrxTaskContainer> {
                     continue;
 
                 String idActivity = local.pdvTask.getValue(OpencrxActivity.CRX_ID);
+            	long taskId = local.task.getId();
+            	String taskTitle = local.task.getValue(Task.TITLE);
 
                 if (! existRemoteMatch(idActivity, remoteTasks)){
                     try{
@@ -402,15 +405,23 @@ public class OpencrxSyncProvider extends SyncProvider<OpencrxTaskContainer> {
                         dataService.deleteTaskAndMetadata(local.task.getId());
                     }
                 } else {
-                	// sync comments
-                    Update[] newComments = dataService.readNewComments(lastSync, local.task.getId());
+                	// sync comments local => remote
+                    Update[] newComments = dataService.readNewComments(lastSync, taskId);
                     for (Update comment : newComments){
                         invoker.taskFollowUpToInProgress(idActivity, graph);
                         
                     	String text = comment.getValue(Update.MESSAGE);
 
                         invoker.taskAddNote(idActivity, text, graph);
-                    }                    
+                    }         
+
+                    // sync comments remote => local
+                    List<String> remoteNotes = invoker.getAddNotes(idActivity, graph, OpencrxUtils.formatAsOpencrx(lastSync.toMillis(false)) );
+                    for (String note : remoteNotes){
+                    	Log.i(OpencrxUtils.TAG, String.format("Synchronizing comment [%s]", note));
+                    	if (! dataService.storeNewComment(note, taskId, taskTitle) )
+                    		Log.e(OpencrxUtils.TAG, "Couldn't save update.");
+                    }
                 }
             }
         }finally{

@@ -31,6 +31,7 @@ import ru.otdelit.astrid.opencrx.xml.ActivityParser;
 import ru.otdelit.astrid.opencrx.xml.ActivityProcessParser;
 import ru.otdelit.astrid.opencrx.xml.ActivityProcessStateParser;
 import ru.otdelit.astrid.opencrx.xml.ActivityProcessTransitionParser;
+import ru.otdelit.astrid.opencrx.xml.ActiviyFollowUpParser;
 import ru.otdelit.astrid.opencrx.xml.BaseParser;
 import ru.otdelit.astrid.opencrx.xml.ContactParser;
 import ru.otdelit.astrid.opencrx.xml.CreatorActivityGroupParser;
@@ -322,6 +323,36 @@ public class OpencrxUtils {
             }
         }
     }
+
+    public boolean getFollowUpsAddNote(List<String> dest, String url, String transitionId) throws ApiServiceException {
+    	InputStream xml = null;
+        try {
+        	
+        	xml = restClient.get(url, retryLogin, retryPassword);
+        	
+            SAXParser parser = getParser();
+
+            ActiviyFollowUpParser p = new ActiviyFollowUpParser(dest, transitionId);
+
+            parser.parse(xml, p);
+
+            if (! p.isResultSet())
+                throw new ApiServiceException("Wrong rest answer.");
+
+            return p.hasMore();
+
+        } catch (Exception e) {
+            throw new ApiServiceException(e);
+        }finally{
+            try {
+            	if (xml != null)
+            		xml.close();
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        }
+		
+	}
 
     public List<String> getActivityGroupXris(String url) throws ApiServiceException{
     	InputStream xml = null;
@@ -977,5 +1008,6 @@ public class OpencrxUtils {
         }
         return opencrxTimeFormatter;
     }
+
 
 }

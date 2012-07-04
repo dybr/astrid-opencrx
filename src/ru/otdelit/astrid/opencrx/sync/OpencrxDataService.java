@@ -24,6 +24,7 @@ import com.todoroo.andlib.sql.Criterion;
 import com.todoroo.andlib.sql.Join;
 import com.todoroo.andlib.sql.Order;
 import com.todoroo.andlib.sql.Query;
+import com.todoroo.andlib.utility.DateUtilities;
 import com.todoroo.astrid.data.Metadata;
 import com.todoroo.astrid.data.MetadataApiDao.MetadataCriteria;
 import com.todoroo.astrid.data.StoreObject;
@@ -161,6 +162,19 @@ public final class OpencrxDataService extends SyncMetadataService<OpencrxTaskCon
     	}
     	
     	return ret;
+    }
+    
+    public boolean storeNewComment(String text, long taskId, String taskTitle){
+    	Update upd = new Update();
+    	
+    	upd.setValue(Update.ACTION_CODE, UPDATE_TASK_COMMENT);
+    	upd.setValue(Update.TASK_LOCAL, taskId);
+    	upd.setValue(Update.MESSAGE, text);
+    	upd.setValue(Update.USER_ID, 0L);
+    	upd.setValue(Update.CREATION_DATE, DateUtilities.now());
+    	upd.setValue(Update.TARGET_NAME, taskTitle);
+
+    	return updateDao.save(upd);
     }
 
     // --- dashboard methods
