@@ -6,45 +6,46 @@ import org.json.JSONObject;
 import org.xml.sax.Attributes;
 import org.xml.sax.SAXException;
 
+import android.util.Log;
 import ru.otdelit.astrid.opencrx.api.OpencrxUtils;
 
 /**
  * 
  * @author Andrey Marchenko <igendou@gmail.com>
- *
+ * 
  */
 @SuppressWarnings("nls")
-public class ActivityCreatorParser extends BaseParser{
+public class ActivityCreatorParser extends BaseParser {
 
-    private final JSONArray destination;
-    private JSONObject dashboard;
+	private final JSONArray destination;
+	private JSONObject dashboard;
 
 	public ActivityCreatorParser(JSONArray destination) {
-        this.destination = destination;
-    }
+		this.destination = destination;
+	}
 
-    @Override
+	@Override
 	public void endElement(String uri, String localName, String qName)
 			throws SAXException {
 
-        try{
-            if (qName.equals("name"))
-                dashboard.put("title", buffer.toString());
-        }catch(Exception e){
-            throw new SAXException(e);
+		try {
+			if (qName.equals("name"))
+				dashboard.put("title", buffer.toString());
+		} catch (Exception e) {
+			throw new SAXException(e);
 
-        }
+		}
 
-		if (qName.equals("org.opencrx.kernel.activity1.ActivityCreator")){
+		if (qName.equals("org.opencrx.kernel.activity1.ActivityCreator")) {
 
-		    JSONObject wrap = new JSONObject();
-		    try {
-                wrap.put("dashboard", dashboard);
-            } catch (JSONException e) {
-                throw new SAXException(e);
-            }
+			JSONObject wrap = new JSONObject();
+			try {
+				wrap.put("dashboard", dashboard);
+			} catch (JSONException e) {
+				throw new SAXException(e);
+			}
 
-		    destination.put(wrap);
+			destination.put(wrap);
 
 		}
 
@@ -58,25 +59,25 @@ public class ActivityCreatorParser extends BaseParser{
 
 		super.startElement(uri, localName, qName, attributes);
 
-		if (qName.equals("org.opencrx.kernel.activity1.ActivityCreator")){
-            dashboard = new JSONObject();
+		if (qName.equals("org.opencrx.kernel.activity1.ActivityCreator")) {
+			dashboard = new JSONObject();
 
-            try {
-                dashboard.put("deleted", 0);
-                dashboard.put("accesslist", new JSONArray());
-                dashboard.put("title", "");
+			try {
+				dashboard.put("deleted", 0);
+				dashboard.put("accesslist", new JSONArray());
+				dashboard.put("title", "");
 
-                String crxId = attributes.getValue("id");
-                dashboard.put("id_dashboard", OpencrxUtils.hash(crxId) );
-                dashboard.put("crx_id", crxId);
-            } catch (JSONException e) {
-                throw new SAXException(e);
-            }
+				String crxId = attributes.getValue("id");
+				dashboard.put("id_dashboard", OpencrxUtils.hash(crxId));
+				dashboard.put("crx_id", crxId);
+			} catch (JSONException e) {
+				throw new SAXException(e);
+			}
 
 		}
 
 		if (qName.equals("name"))
-            buffer = new StringBuilder();
+			buffer = new StringBuilder();
 
 	}
 

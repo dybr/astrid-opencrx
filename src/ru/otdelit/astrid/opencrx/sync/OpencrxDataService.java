@@ -32,392 +32,388 @@ import com.todoroo.astrid.data.StoreObjectApiDao;
 import com.todoroo.astrid.data.StoreObjectApiDao.StoreObjectCriteria;
 import com.todoroo.astrid.data.Task;
 import com.todoroo.astrid.data.Update;
-import com.todoroo.astrid.data.UpdateApiDao;
-import com.todoroo.astrid.sync.SyncMetadataService;
+import ru.otdelit.astrid.opencrx.api.UpdateApiDao;
+import ru.otdelit.astrid.opencrx.api.SyncMetadataService;
 import com.todoroo.astrid.sync.SyncProviderUtilities;
 
 /**
  * Singleton. Provides access to Astrid DataService.
-
+ * 
  * Adapted from Producteev plugin by Tim Su <tim@todoroo.com>
- *
+ * 
  * @author Andrey Marchenko <igendou@gmail.com>
  */
-public final class OpencrxDataService extends SyncMetadataService<OpencrxTaskContainer>{
+public final class OpencrxDataService extends
+		SyncMetadataService<OpencrxTaskContainer> {
 
-    // --- constants
-    /** Property for reading tag values */
-    public static final StringProperty TAG = Metadata.VALUE1;
-    
-    /** Utility for joining tasks with metadata */
-    public static final Join METADATA_JOIN = Join.left(Metadata.TABLE, Task.ID.eq(Metadata.TASK));
-    
-    /**
-     * ATTENTION: duplicates UpdateAdapter.UPDATE_TASK_COMMENT
-     */
-    public static final String UPDATE_TASK_COMMENT = "task_comment"; //$NON-NLS-1$
+	// --- constants
+	/** Property for reading tag values */
+	public static final StringProperty TAG = Metadata.VALUE1;
 
-    // --- singleton
+	/** Utility for joining tasks with metadata */
+	public static final Join METADATA_JOIN = Join.left(Metadata.TABLE,
+			Task.ID.eq(Metadata.TASK));
 
-    private static OpencrxDataService instance = null;
+	/**
+	 * ATTENTION: duplicates UpdateAdapter.UPDATE_TASK_COMMENT
+	 */
+	public static final String UPDATE_TASK_COMMENT = "task_comment"; //$NON-NLS-1$
 
-    public static synchronized OpencrxDataService getInstance() {
-        if(instance == null)
-            instance = new OpencrxDataService(ContextManager.getContext());
-        return instance;
-    }
+	// --- singleton
 
-    // --- instance variables
+	private static OpencrxDataService instance = null;
 
-    protected final Context context;
+	public static synchronized OpencrxDataService getInstance() {
+		if (instance == null)
+			instance = new OpencrxDataService(ContextManager.getContext());
+		return instance;
+	}
 
-    private StoreObjectApiDao storeObjectDao;
-    private UpdateApiDao updateDao;
+	// --- instance variables
 
-    private OpencrxDataService(Context context) {
-    	super(context);
-        this.context = context;
-        
-        storeObjectDao = new StoreObjectApiDao(context);
-        updateDao = new UpdateApiDao(context);
-    }
+	protected final Context context;
 
-    // --- task and metadata methods
+	private StoreObjectApiDao storeObjectDao;
+	private UpdateApiDao updateDao;
 
-    /**
-     * Clears metadata information. Used when user logs out of service
-     */
-    @Override
-    public void clearMetadata() {
-        super.clearMetadata();
-        storeObjectDao.deleteWhere(StoreObject.TYPE.eq(OpencrxActivityCreator.TYPE));
-        storeObjectDao.deleteWhere(StoreObject.TYPE.eq(OpencrxContact.TYPE));
-    }
+	private OpencrxDataService(Context context) {
+		super(context);
+		this.context = context;
 
-    public TodorooCursor<Task> getSyncedTasks(Property<?>[] properties) {
-        TodorooCursor<Task> tasks = taskDao.query(Query.select(Task.ID).
-        									orderBy(Order.asc(Task.ID)));
+		storeObjectDao = new StoreObjectApiDao(context);
+		updateDao = new UpdateApiDao(context);
+	}
 
-        return joinWithOpencrxMetadata(tasks, true, properties);
-    }
+	// --- task and metadata methods
 
-    private void readCreators() {
-        if (creators == null) {
-            creators = readStoreObjects(OpencrxActivityCreator.TYPE);
-            creatorExists = new boolean[creators.length];
-        }
-    }
+	/**
+	 * Clears metadata information. Used when user logs out of service
+	 */
+	@Override
+	public void clearMetadata() {
+		super.clearMetadata();
+		storeObjectDao.deleteWhere(StoreObject.TYPE
+				.eq(OpencrxActivityCreator.TYPE));
+		storeObjectDao.deleteWhere(StoreObject.TYPE.eq(OpencrxContact.TYPE));
+	}
 
-    private void readContacts() {
-        if (contacts == null) {
-            contacts = readStoreObjects(OpencrxContact.TYPE);
-            contactExists = new boolean[contacts.length];
-        }
-    }
+	public TodorooCursor<Task> getSyncedTasks(Property<?>[] properties) {
+		TodorooCursor<Task> tasks = taskDao.query(Query.select(Task.ID)
+				.orderBy(Order.asc(Task.ID)));
 
-    /**
-     * Reads store objects.
-     */
-    public StoreObject[] readStoreObjects(String type) {
-        StoreObject[] ret;
-        TodorooCursor<StoreObject> cursor = storeObjectDao.query(Query.select(StoreObject.PROPERTIES).
-                where(StoreObjectCriteria.byType(type)));
-        try {
-            ret = new StoreObject[cursor.getCount()];
-            for(int i = 0; i < ret.length; i++) {
-                cursor.moveToNext();
-                StoreObject object = new StoreObject(cursor);
-                ret[i] = object;
-            }
-        } finally {
-            cursor.close();
-        }
+		return joinWithOpencrxMetadata(tasks, true, properties);
+	}
 
-        return ret;
-    }
-    
-    // --- Update methods
-    
-    public Update[] readNewComments(Time lastSync, long taskId){
-    	Update[] ret = null;
-    	TodorooCursor<Update> cursor = updateDao.query(Query.select(Update.PROPERTIES)
-    														.where(
-    															Criterion.and(
-    																	Update.ACTION_CODE.eq(UPDATE_TASK_COMMENT), 
-    																	Update.TASK_LOCAL.eq(taskId),
-    																	Update.CREATION_DATE.gt(lastSync.toMillis(false))
-    															)
-    														)
-    												);
-    	
-    	try{
-    		ret = new Update[cursor.getCount()];
-    		for (int i = 0; i < ret.length; ++i){
-    			cursor.moveToNext();
-    			Update upd = new Update(cursor);
-    			ret[i] = upd;
-    		}
-    	}finally{
-    		cursor.close();
-    	}
-    	
-    	return ret;
-    }
-    
-    public boolean storeNewComment(String text, long taskId, String taskTitle){
-    	Update upd = new Update();
-    	
-    	upd.setValue(Update.ACTION_CODE, UPDATE_TASK_COMMENT);
-    	upd.setValue(Update.TASK_LOCAL, taskId);
-    	upd.setValue(Update.MESSAGE, text);
-    	upd.setValue(Update.USER_ID, 0L);
-    	upd.setValue(Update.CREATION_DATE, DateUtilities.now());
-    	upd.setValue(Update.TARGET_NAME, taskTitle);
+	private void readCreators() {
+		if (creators == null) {
+			creators = readStoreObjects(OpencrxActivityCreator.TYPE);
+			creatorExists = new boolean[creators.length];
+		}
+	}
 
-    	return updateDao.save(upd);
-    }
+	private void readContacts() {
+		if (contacts == null) {
+			contacts = readStoreObjects(OpencrxContact.TYPE);
+			contactExists = new boolean[contacts.length];
+		}
+	}
 
-    // --- dashboard methods
+	/**
+	 * Reads store objects.
+	 */
+	public StoreObject[] readStoreObjects(String type) {
+		StoreObject[] ret;
+		TodorooCursor<StoreObject> cursor = storeObjectDao
+				.query(Query.select(StoreObject.PROPERTIES).where(
+						StoreObjectCriteria.byType(type)));
+		try {
+			ret = new StoreObject[cursor.getCount()];
+			for (int i = 0; i < ret.length; i++) {
+				cursor.moveToNext();
+				StoreObject object = new StoreObject(cursor);
+				ret[i] = object;
+			}
+		} finally {
+			cursor.close();
+		}
 
-    private StoreObject[] creators = null;
-    private boolean[] creatorExists = null; // array of flags to determine whether creator still exists on remote server
+		return ret;
+	}
 
-    /**
-     * @return a list of creators
-     */
-    public StoreObject[] getCreators() {
-        readCreators();
-        return creators;
-    }
+	// --- Update methods
 
-    /**
-     * Reads creators
-     * @throws JSONException
-     */
-    @SuppressWarnings("nls")
-    public void updateCreators(JSONArray changedCreators) throws JSONException {
-        readCreators();
+	public Update[] readNewComments(Time lastSync, long taskId) {
+		Update[] ret = null;
+		TodorooCursor<Update> cursor = updateDao.query(Query.select(
+				Update.PROPERTIES).where(
+				Criterion.and(Update.ACTION_CODE.eq(UPDATE_TASK_COMMENT),
+						Update.TASK_LOCAL.eq(taskId),
+						Update.CREATION_DATE.gt(lastSync.toMillis(false)))));
 
-        for(int i = 0; i < changedCreators.length(); i++) {
-            JSONObject remote = changedCreators.getJSONObject(i).getJSONObject("dashboard");
-            updateCreator(remote, false);
-        }
+		try {
+			ret = new Update[cursor.getCount()];
+			for (int i = 0; i < ret.length; ++i) {
+				cursor.moveToNext();
+				Update upd = new Update(cursor);
+				ret[i] = upd;
+			}
+		} finally {
+			cursor.close();
+		}
 
-        // check if there are dashboards which does not exist on remote server
-        for (int i = 0; i < creators.length; ++i){
-            if (! creatorExists[i])
-                storeObjectDao.delete(creators[i].getId());
-        }
+		return ret;
+	}
 
-        // clear dashboard cache
-        creators = null;
-        creatorExists = null;
-    }
+	public boolean storeNewComment(String text, long taskId, String taskTitle) {
+		Update upd = new Update();
 
-    @SuppressWarnings("nls")
-    public StoreObject updateCreator(JSONObject remote, boolean reinitCache) throws JSONException {
-        if (reinitCache)
-            readCreators();
-        long id = remote.getLong("id_dashboard");
-        StoreObject local = null;
-        for(int i = 0; i < creators.length; ++i) {
-            if(creators[i].getValue(OpencrxActivityCreator.REMOTE_ID).equals(id)) {
-                local = creators[i];
-                creatorExists[i] = true;
-                break;
-            }
-        }
+		upd.setValue(Update.ACTION_CODE, UPDATE_TASK_COMMENT);
+		upd.setValue(Update.TASK_LOCAL, taskId);
+		upd.setValue(Update.MESSAGE, text);
+		upd.setValue(Update.USER_ID, 0L);
+		upd.setValue(Update.CREATION_DATE, DateUtilities.now());
+		upd.setValue(Update.TARGET_NAME, taskTitle);
 
-        if(local == null)
-            local = new StoreObject();
+		return updateDao.save(upd);
+	}
 
-        local.setValue(StoreObject.TYPE, OpencrxActivityCreator.TYPE);
-        local.setValue(OpencrxActivityCreator.REMOTE_ID, id);
-        local.setValue(OpencrxActivityCreator.NAME, ApiUtilities.decode(remote.getString("title")));
-        local.setValue(OpencrxActivityCreator.CRX_ID, remote.getString("crx_id"));
+	// --- dashboard methods
 
-        storeObjectDao.save(local);
-        if (reinitCache)
-            creators = null;
-        return local;
-    }
+	private StoreObject[] creators = null;
+	private boolean[] creatorExists = null; // array of flags to determine
+											// whether creator still exists on
+											// remote server
 
-    // user methods
+	/**
+	 * @return a list of creators
+	 */
+	public StoreObject[] getCreators() {
+		readCreators();
+		return creators;
+	}
 
-    private StoreObject[] contacts = null;
-    private boolean[] contactExists = null;
+	/**
+	 * Reads creators
+	 * 
+	 * @throws JSONException
+	 */
+	@SuppressWarnings("nls")
+	public void updateCreators(JSONArray changedCreators) throws JSONException {
+		readCreators();
 
-    /**
-     * @return a list of users
-     */
-    public StoreObject[] getContacts() {
-        readContacts();
-        return contacts;
-    }
+		for (int i = 0; i < changedCreators.length(); i++) {
+			JSONObject remote = changedCreators.getJSONObject(i).getJSONObject(
+					"dashboard");
+			updateCreator(remote, false);
+		}
 
-    /**
-     * Reads users
-     */
-    public void updateContacts(OpencrxContact[] remoteUsers){
-        readContacts();
+		// check if there are dashboards which does not exist on remote server
+		for (int i = 0; i < creators.length; ++i) {
+			if (!creatorExists[i])
+				storeObjectDao.delete(creators[i].getId());
+		}
 
-        for(int i = 0; i < remoteUsers.length; i++) {
-            OpencrxContact remote = remoteUsers[i];
-            updateContact(remote, false);
-        }
+		// clear dashboard cache
+		creators = null;
+		creatorExists = null;
+	}
 
-        // check if there are users which does not exist on remote server
-        for (int i = 0; i < contacts.length; ++i){
-            if (! contactExists[i])
-                storeObjectDao.delete(contacts[i].getId());
-        }
+	@SuppressWarnings("nls")
+	public StoreObject updateCreator(JSONObject remote, boolean reinitCache)
+			throws JSONException {
+		if (reinitCache)
+			readCreators();
+		long id = remote.getLong("id_dashboard");
+		StoreObject local = null;
+		for (int i = 0; i < creators.length; ++i) {
+			if (creators[i].getValue(OpencrxActivityCreator.REMOTE_ID).equals(
+					id)) {
+				local = creators[i];
+				creatorExists[i] = true;
+				break;
+			}
+		}
 
-        // clear user cache
-        contacts = null;
-        contactExists = null;
-    }
+		if (local == null)
+			local = new StoreObject();
 
-    public StoreObject updateContact(OpencrxContact remote, boolean reinitCache){
-        if (reinitCache)
-            readContacts();
+		local.setValue(StoreObject.TYPE, OpencrxActivityCreator.TYPE);
+		local.setValue(OpencrxActivityCreator.REMOTE_ID, id);
+		local.setValue(OpencrxActivityCreator.NAME,
+				ApiUtilities.decode(remote.getString("title")));
+		local.setValue(OpencrxActivityCreator.CRX_ID,
+				remote.getString("crx_id"));
 
-        long id = remote.getId();
+		storeObjectDao.save(local);
+		if (reinitCache)
+			creators = null;
+		return local;
+	}
 
-        StoreObject local = null;
+	// user methods
 
-        for(int i = 0; i < contacts.length; ++i) {
-            if(contacts[i].getValue(OpencrxContact.REMOTE_ID).equals(id)) {
-                local = contacts[i];
-                contactExists[i] = true;
-                break;
-            }
-        }
+	private StoreObject[] contacts = null;
+	private boolean[] contactExists = null;
 
-        if(local == null)
-            local = new StoreObject();
+	/**
+	 * @return a list of users
+	 */
+	public StoreObject[] getContacts() {
+		readContacts();
+		return contacts;
+	}
 
-        local.setValue(StoreObject.TYPE, OpencrxContact.TYPE);
-        local.setValue(OpencrxContact.REMOTE_ID, id);
-        local.setValue(OpencrxContact.FIRST_NAME, remote.getFirstname());
-        local.setValue(OpencrxContact.LAST_NAME, remote.getLastname());
-        local.setValue(OpencrxContact.CRX_ID, remote.getCrxId());
+	/**
+	 * Reads users
+	 */
+	public void updateContacts(OpencrxContact[] remoteUsers) {
+		readContacts();
 
-        storeObjectDao.save(local);
+		for (int i = 0; i < remoteUsers.length; i++) {
+			OpencrxContact remote = remoteUsers[i];
+			updateContact(remote, false);
+		}
 
-        if (reinitCache){
-            contacts = null;
-            contactExists = null;
-        }
+		// check if there are users which does not exist on remote server
+		for (int i = 0; i < contacts.length; ++i) {
+			if (!contactExists[i])
+				storeObjectDao.delete(contacts[i].getId());
+		}
 
-        return local;
-    }
+		// clear user cache
+		contacts = null;
+		contactExists = null;
+	}
 
-    public String getCreatorCrxId(long idCreator) {
-        TodorooCursor<StoreObject> res = storeObjectDao.query(Query.
-                                                   select(OpencrxActivityCreator.CRX_ID).
-                                                   where(Criterion.and
-                                                                   (StoreObject.TYPE.eq(OpencrxActivityCreator.TYPE),
-                                                                    OpencrxActivityCreator.REMOTE_ID.eq(idCreator))
-                                                         )
-                                                    );
+	public StoreObject updateContact(OpencrxContact remote, boolean reinitCache) {
+		if (reinitCache)
+			readContacts();
 
-        try{
-            if (res.getCount() > 0){
-                res.moveToFirst();
-                String id = res.get(OpencrxActivityCreator.CRX_ID);
-                return id;
-            }else{
-                return null;
-            }
-        }finally{
-            res.close();
-        }
+		long id = remote.getId();
 
-    }
+		StoreObject local = null;
 
-    public String getContactCrxId(long idUser) {
-        TodorooCursor<StoreObject> res = storeObjectDao.query(Query.
-                                                   select(OpencrxContact.CRX_ID).
-                                                   where(Criterion.and
-                                                                   (StoreObject.TYPE.eq(OpencrxContact.TYPE),
-                                                                    OpencrxContact.REMOTE_ID.eq(idUser))
-                                                         )
-                                                    );
+		for (int i = 0; i < contacts.length; ++i) {
+			if (contacts[i].getValue(OpencrxContact.REMOTE_ID).equals(id)) {
+				local = contacts[i];
+				contactExists[i] = true;
+				break;
+			}
+		}
 
-        try{
-            if (res.getCount() > 0){
-                res.moveToFirst();
-                String id = res.get(OpencrxContact.CRX_ID);
-                return id;
-            }else{
-                return null;
-            }
-        }finally{
-            res.close();
-        }
+		if (local == null)
+			local = new StoreObject();
 
-    }
+		local.setValue(StoreObject.TYPE, OpencrxContact.TYPE);
+		local.setValue(OpencrxContact.REMOTE_ID, id);
+		local.setValue(OpencrxContact.FIRST_NAME, remote.getFirstname());
+		local.setValue(OpencrxContact.LAST_NAME, remote.getLastname());
+		local.setValue(OpencrxContact.CRX_ID, remote.getCrxId());
 
-    @SuppressWarnings("nls")
-    public String getUserName(long idUser) {
-        TodorooCursor<StoreObject> res = storeObjectDao.query(Query.
-                                                   select(OpencrxContact.LAST_NAME, OpencrxContact.FIRST_NAME).
-                                                   where(Criterion.and
-                                                                   (StoreObject.TYPE.eq(OpencrxContact.TYPE),
-                                                                    OpencrxContact.REMOTE_ID.eq(idUser))
-                                                         )
-                                                    );
+		storeObjectDao.save(local);
 
-        try{
-            if (res.getCount() > 0){
-                res.moveToFirst();
-                String firstName = res.get(OpencrxContact.FIRST_NAME);
-                String lastName = res.get(OpencrxContact.LAST_NAME);
+		if (reinitCache) {
+			contacts = null;
+			contactExists = null;
+		}
 
-                boolean hasFirstName = !TextUtils.isEmpty(firstName);
-                boolean hasLastName = !TextUtils.isEmpty(lastName);
+		return local;
+	}
 
-                return TextUtils.concat(hasFirstName ? firstName : "",
-                                       hasFirstName && hasLastName ? " " : "",
-                                       hasLastName ? lastName : "").toString();
-            }else{
-                return null;
-            }
-        }finally{
-            res.close();
-        }
+	public String getCreatorCrxId(long idCreator) {
+		TodorooCursor<StoreObject> res = storeObjectDao.query(Query.select(
+				OpencrxActivityCreator.CRX_ID).where(
+				Criterion.and(StoreObject.TYPE.eq(OpencrxActivityCreator.TYPE),
+						OpencrxActivityCreator.REMOTE_ID.eq(idCreator))));
 
-    }
-    
-    @SuppressWarnings("nls")
-    public String getCreatorName(long idCreator) {
-        TodorooCursor<StoreObject> res = storeObjectDao.query(Query.
-                                                   select(OpencrxActivityCreator.NAME).
-                                                   where(Criterion.and
-                                                                   (StoreObject.TYPE.eq(OpencrxActivityCreator.TYPE),
-                                                                    OpencrxActivityCreator.REMOTE_ID.eq(idCreator))
-                                                         )
-                                                    );
+		try {
+			if (res.getCount() > 0) {
+				res.moveToFirst();
+				String id = res.get(OpencrxActivityCreator.CRX_ID);
+				return id;
+			} else {
+				return null;
+			}
+		} finally {
+			res.close();
+		}
 
-        try{
-            if (res.getCount() > 0){
-                res.moveToFirst();
-                String name = res.get(OpencrxActivityCreator.NAME);
+	}
 
-                return name;
-            }else{
-                return null;
-            }
-        }finally{
-            res.close();
-        }
+	public String getContactCrxId(long idUser) {
+		TodorooCursor<StoreObject> res = storeObjectDao.query(Query.select(
+				OpencrxContact.CRX_ID).where(
+				Criterion.and(StoreObject.TYPE.eq(OpencrxContact.TYPE),
+						OpencrxContact.REMOTE_ID.eq(idUser))));
 
-    }
+		try {
+			if (res.getCount() > 0) {
+				res.moveToFirst();
+				String id = res.get(OpencrxContact.CRX_ID);
+				return id;
+			} else {
+				return null;
+			}
+		} finally {
+			res.close();
+		}
 
-    public void deleteTaskAndMetadata(long taskId){
-        taskDao.delete(taskId);
-        metadataDao.deleteWhere(Metadata.TASK.eq(taskId));
-    }
+	}
+
+	@SuppressWarnings("nls")
+	public String getUserName(long idUser) {
+		TodorooCursor<StoreObject> res = storeObjectDao.query(Query.select(
+				OpencrxContact.LAST_NAME, OpencrxContact.FIRST_NAME).where(
+				Criterion.and(StoreObject.TYPE.eq(OpencrxContact.TYPE),
+						OpencrxContact.REMOTE_ID.eq(idUser))));
+
+		try {
+			if (res.getCount() > 0) {
+				res.moveToFirst();
+				String firstName = res.get(OpencrxContact.FIRST_NAME);
+				String lastName = res.get(OpencrxContact.LAST_NAME);
+
+				boolean hasFirstName = !TextUtils.isEmpty(firstName);
+				boolean hasLastName = !TextUtils.isEmpty(lastName);
+
+				return TextUtils.concat(hasFirstName ? firstName : "",
+						hasFirstName && hasLastName ? " " : "",
+						hasLastName ? lastName : "").toString();
+			} else {
+				return null;
+			}
+		} finally {
+			res.close();
+		}
+
+	}
+
+	@SuppressWarnings("nls")
+	public String getCreatorName(long idCreator) {
+		TodorooCursor<StoreObject> res = storeObjectDao.query(Query.select(
+				OpencrxActivityCreator.NAME).where(
+				Criterion.and(StoreObject.TYPE.eq(OpencrxActivityCreator.TYPE),
+						OpencrxActivityCreator.REMOTE_ID.eq(idCreator))));
+
+		try {
+			if (res.getCount() > 0) {
+				res.moveToFirst();
+				String name = res.get(OpencrxActivityCreator.NAME);
+
+				return name;
+			} else {
+				return null;
+			}
+		} finally {
+			res.close();
+		}
+
+	}
+
+	public void deleteTaskAndMetadata(long taskId) {
+		taskDao.delete(taskId);
+		metadataDao.deleteWhere(Metadata.TASK.eq(taskId));
+	}
 
 	@Override
 	public OpencrxTaskContainer createContainerFromLocalTask(Task task,
@@ -427,13 +423,15 @@ public final class OpencrxDataService extends SyncMetadataService<OpencrxTaskCon
 
 	@Override
 	public Criterion getLocalMatchCriteria(OpencrxTaskContainer remoteTask) {
-		return OpencrxActivity.ID.eq(remoteTask.pdvTask.getValue(OpencrxActivity.ID));
+		return OpencrxActivity.ID.eq(remoteTask.pdvTask
+				.getValue(OpencrxActivity.ID));
 	}
 
 	@Override
 	public Criterion getMetadataCriteria() {
-		return Criterion.or(MetadataCriteria.withKey(OpencrxActivity.METADATA_KEY),
-							MetadataCriteria.withKey(TAG_KEY));
+		return Criterion.or(
+				MetadataCriteria.withKey(OpencrxActivity.METADATA_KEY),
+				MetadataCriteria.withKey(TAG_KEY));
 	}
 
 	@Override
@@ -450,76 +448,75 @@ public final class OpencrxDataService extends SyncMetadataService<OpencrxTaskCon
 	public SyncProviderUtilities getUtilities() {
 		return OpencrxUtilities.INSTANCE;
 	}
-	
-    private TodorooCursor<Task> joinWithOpencrxMetadata(TodorooCursor<Task> tasks,
-            boolean both, Property<?>... properties) {
-        try {
-            TodorooCursor<Metadata> metadata = getRemoteTaskOpencrxMetadata();
-            try {
-                ArrayList<Long> matchingRows = new ArrayList<Long>();
-                joinRowsOpencrx(tasks, metadata, matchingRows, both);
 
-                return
-                taskDao.query(Query.select(properties).where(Task.ID.in(
-                        matchingRows.toArray(new Long[matchingRows.size()]))));
-            } finally {
-                metadata.close();
-            }
-        } finally {
-            tasks.close();
-        }
-    }
-    
-    /**
-     * Gets cursor across all task metadata for joining
-     *
-     * @return cursor
-     */
-    private TodorooCursor<Metadata> getRemoteTaskOpencrxMetadata() {
-        return metadataDao.query(Query.
-        		select(Metadata.TASK).
-        		where(
-                			Criterion.and(MetadataCriteria.withKey(getMetadataKey()),
-                						  OpencrxActivity.ID.gt(1)
-                						 )
-                	 ).
-                orderBy(Order.asc(Metadata.TASK)));
-    }
+	private TodorooCursor<Task> joinWithOpencrxMetadata(
+			TodorooCursor<Task> tasks, boolean both, Property<?>... properties) {
+		try {
+			TodorooCursor<Metadata> metadata = getRemoteTaskOpencrxMetadata();
+			try {
+				ArrayList<Long> matchingRows = new ArrayList<Long>();
+				joinRowsOpencrx(tasks, metadata, matchingRows, both);
 
-    /**
-     * Join rows from two cursors on the first column, assuming its an id column
-     * @param left
-     * @param right
-     * @param matchingRows
-     * @param both - if false, returns left join, if true, returns both join
-     */
-    private static void joinRowsOpencrx(TodorooCursor<?> left,
-            TodorooCursor<?> right, ArrayList<Long> matchingRows,
-            boolean both) {
+				return taskDao.query(Query.select(properties).where(
+						Task.ID.in(matchingRows.toArray(new Long[matchingRows
+								.size()]))));
+			} finally {
+				metadata.close();
+			}
+		} finally {
+			tasks.close();
+		}
+	}
 
-        left.moveToPosition(-1);
-        right.moveToFirst();
+	/**
+	 * Gets cursor across all task metadata for joining
+	 * 
+	 * @return cursor
+	 */
+	private TodorooCursor<Metadata> getRemoteTaskOpencrxMetadata() {
+		return metadataDao.query(Query
+				.select(Metadata.TASK)
+				.where(Criterion.and(
+						MetadataCriteria.withKey(getMetadataKey()),
+						OpencrxActivity.ID.gt(1)))
+				.orderBy(Order.asc(Metadata.TASK)));
+	}
 
-        while(true) {
-            left.moveToNext();
-            if(left.isAfterLast())
-                break;
-            long leftValue = left.getLong(0);
+	/**
+	 * Join rows from two cursors on the first column, assuming its an id column
+	 * 
+	 * @param left
+	 * @param right
+	 * @param matchingRows
+	 * @param both
+	 *            - if false, returns left join, if true, returns both join
+	 */
+	private static void joinRowsOpencrx(TodorooCursor<?> left,
+			TodorooCursor<?> right, ArrayList<Long> matchingRows, boolean both) {
 
-            // advance right until it is equal or bigger
-            while(!right.isAfterLast() && right.getLong(0) < leftValue) {
-                right.moveToNext();
-            }
+		left.moveToPosition(-1);
+		right.moveToFirst();
 
-            if(right.isAfterLast()) {
-                if(!both)
-                    matchingRows.add(leftValue);
-                continue;
-            }
+		while (true) {
+			left.moveToNext();
+			if (left.isAfterLast())
+				break;
+			long leftValue = left.getLong(0);
 
-            if((right.getLong(0) == leftValue) == both)
-                matchingRows.add(leftValue);
-        }
-    }
+			// advance right until it is equal or bigger
+			while (!right.isAfterLast() && right.getLong(0) < leftValue) {
+				right.moveToNext();
+			}
+
+			if (right.isAfterLast()) {
+				if (!both)
+					matchingRows.add(leftValue);
+				continue;
+			}
+
+			if ((right.getLong(0) == leftValue) == both)
+				matchingRows.add(leftValue);
+		}
+	}
 
 }
